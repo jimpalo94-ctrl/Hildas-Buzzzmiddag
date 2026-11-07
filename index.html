@@ -248,6 +248,12 @@ button:focus-visible, input:focus-visible{outline:3px solid var(--c3); outline-o
 .slingwrap canvas{display:block; width:100%; height:100%}
 .slpad{border-radius:24px; background:var(--panel); overflow:hidden; touch-action:none}
 .slpad canvas{display:block; width:100%; height:auto; aspect-ratio:600/560; touch-action:none; user-select:none; -webkit-user-select:none}
+.picker{display:grid; grid-template-columns:repeat(3,1fr); gap:8px}
+.pick{border:0; border-radius:16px; background:var(--panel); padding:6px 4px 8px; display:grid; justify-items:center; gap:2px; font-weight:800; font-size:1.05rem; box-shadow:0 3px 0 var(--line)}
+.pick canvas{width:56px; height:56px}
+.pick small{font-weight:700; font-size:.8rem; color:var(--ink-soft)}
+.pick[aria-pressed="true"]{box-shadow:0 0 0 3px var(--ink)}
+.pick[disabled]{opacity:.35; cursor:default}
 </style>
 </head>
 <body>
@@ -2963,9 +2969,9 @@ function buildSteps(len){
     { title: "Snabba svar", desc: "Välj rätt svar på telefonen. Ju snabbare du svarar, desto fler poäng.", items: draw("mc", MC, L.mc).map(r => ({ t: "mc", ...mkQ(r) })) },
     { title: "Reaktionen", desc: "Vänta tills skärmen blir grön och tryck då så snabbt du kan. Trycker du för tidigt blir det noll poäng.", items: Array.from({ length: L.re }, () => ({ t: "react" })) },
     { title: "Närmast vinner", desc: "Skriv in en siffra. Den som kommer närmast rätt svar vinner. Exakt rätt ger 500 poäng extra.", items: draw("es", EST, L.es).map(r => ({ t: "est", q: r[0], a: r[1], u: r[2] })) },
+    { title: "Vällingjakten", desc: "En i taget skjuter med slangbellan. Du har Josef, Aston och Leah och väljer själv i vilken ordning. Josef exploderar när han träffar och river väggen lättast. Träffa vällingflaskorna för mest poäng!", items: [{ t: "sling", level: Math.floor(Math.random() * LEVELS.length) }] },
     { title: "Var ligger det?", desc: "Sätt en flagga på kartan i din telefon. Ingen ser de andras flaggor förrän alla har satt sin. Närmast vinner.", items: draw("geo", GEO, L.ge).map(r => ({ t: "geo", q: r[0], lat: r[1], lon: r[2] })) },
     { title: "Tryckfesten", desc: "Tryck på knappen så många gånger du hinner på åtta sekunder.", items: [{ t: "tap" }] },
-    { title: "Vällingjakten", desc: "En i taget skjuter med slangbellan. Josef först: han flyger som en missil och exploderar. Sen Aston och Leah. Träffa vällingflaskorna för mest poäng!", items: [{ t: "sling", level: Math.floor(Math.random() * LEVELS.length) }] },
     { title: "Snabbaste fingret", desc: "Tryck på buzzern först för att få svara. Rätt svar ger 800 poäng, fel svar kostar 400.", items: draw("bz", BUZZQ, L.bz).map(r => ({ t: "buzz", ...mkQ(r) })) },
     { title: "Finalen", desc: "Samma som i första ronden, men alla poäng räknas dubbelt.", items: draw("mc", MC, L.fi).map(r => ({ t: "mc", mult: 2, ...mkQ(r) })) }
   ];
@@ -3177,11 +3183,13 @@ const KINDS = {
   wood: { density: .0012, hp: 7, pts: 100 },
   glass: { density: .0008, hp: 3.5, pts: 60 },
   stone: { density: .003, hp: 26, pts: 250 },
-  bottle: { density: .0007, hp: 2.2, pts: 1500 }
+  bottle: { density: .0007, hp: 2.2, pts: 1500 },
+  wall: { density: .0028, hp: 18, pts: 250 }
 };
+let bigWall = () => {};
 const LEVELS = [
   (box, bottle) => { // Vällingslottet
-    box("stone", 770, GY, 44, 210);
+    bigWall();
     let b = GY; box("wood", 940, b, 22, 130); box("wood", 1060, b, 22, 130); bottle(1000, b);
     b -= 130; box("wood", 1000, b, 160, 22); bottle(1000, b - 22);
     b = GY; box("glass", 1190, b, 22, 140); box("glass", 1310, b, 22, 140); bottle(1250, b);
@@ -3191,7 +3199,7 @@ const LEVELS = [
     box("stone", 1460, GY, 60, 60); bottle(1460, GY - 60);
   },
   (box, bottle) => { // Pyramiden
-    box("stone", 790, GY, 40, 170);
+    bigWall();
     [1060, 1140, 1220, 1300].forEach(x => box("wood", x, GY, 70, 70));
     [1100, 1260].forEach(x => box("wood", x, GY - 70, 70, 70)); box("glass", 1180, GY - 70, 70, 70);
     [1140, 1220].forEach(x => box("wood", x, GY - 140, 70, 70));
@@ -3203,7 +3211,7 @@ const LEVELS = [
     box("wood", 1150, GY - 180, 360, 22); bottle(1100, GY - 202); bottle(1200, GY - 202);
     box("glass", 1150, GY, 60, 60); bottle(1150, GY - 60);
     box("wood", 1420, GY, 22, 100); box("wood", 1500, GY, 22, 100); box("wood", 1460, GY - 100, 120, 22); bottle(1460, GY);
-    box("glass", 840, GY, 30, 120);
+    bigWall();
   }
 ];
 
@@ -3237,12 +3245,12 @@ function drawBaby(c, x, y, r, ang, who){
 }
 function drawJosef(c, x, y, ang, s){
   c.save(); c.translate(x, y); c.rotate(ang || 0); c.scale(s || 1, s || 1);
-  c.fillStyle = "#2E3A66"; c.fillRect(-35, -10, 22, 8); c.fillRect(-35, 2, 22, 8);
+  c.fillStyle = "#3A3550"; c.fillRect(-35, -10, 22, 8); c.fillRect(-35, 2, 22, 8);
   c.fillStyle = "#1B1B1B"; c.fillRect(-38, -11, 6, 10); c.fillRect(-38, 1, 6, 10);
-  c.fillStyle = "#E8213B"; c.beginPath(); c.roundRect ? c.roundRect(-15, -12, 32, 24, 6) : c.rect(-15, -12, 32, 24); c.fill();
+  c.fillStyle = "#2F6BFF"; c.beginPath(); c.roundRect ? c.roundRect(-15, -12, 32, 24, 6) : c.rect(-15, -12, 32, 24); c.fill();
   c.fillStyle = "#F2C49C"; c.fillRect(16, -13, 20, 5); c.fillRect(16, 8, 20, 5);
   c.beginPath(); c.arc(24, 0, 10, 0, 7); c.fill();
-  c.fillStyle = "#4A2E16"; c.beginPath(); c.arc(21, 0, 10.5, Math.PI * .55, Math.PI * 1.45); c.fill();
+  c.fillStyle = "#D97757"; c.beginPath(); c.arc(21, 0, 11.5, Math.PI * .5, Math.PI * 1.5); c.fill(); c.beginPath(); c.arc(18, -8, 4, 0, 7); c.arc(15, -3, 4, 0, 7); c.fill();
   c.fillStyle = "#1B1B1B"; c.beginPath(); c.arc(28, -3, 1.6, 0, 7); c.fill();
   c.strokeStyle = "#1B1B1B"; c.lineWidth = 1.6; c.beginPath(); c.moveTo(27, 4); c.lineTo(31, 4); c.stroke();
   c.restore();
@@ -3264,6 +3272,7 @@ function drawBlock(c, b){
   c.save(); c.translate(b.position.x, b.position.y); c.rotate(b.angle);
   if (P.kind === "wood"){ c.fillStyle = "#C98B4B"; c.strokeStyle = "#7A4E22"; }
   else if (P.kind === "glass"){ c.fillStyle = "rgba(185,225,255,.6)"; c.strokeStyle = "#5E98CC"; }
+  else if (P.kind === "wall"){ c.fillStyle = "#B3594A"; c.strokeStyle = "#6E2E24"; }
   else { c.fillStyle = "#9097A3"; c.strokeStyle = "#5B616C"; }
   c.lineWidth = 3; c.fillRect(-w / 2, -h / 2, w, h); c.strokeRect(-w / 2 + 1.5, -h / 2 + 1.5, w - 3, h - 3);
   if (P.kind === "wood"){
@@ -3272,6 +3281,9 @@ function drawBlock(c, b){
     for (let i = 1; i < 3; i++){ c.beginPath(); if (long){ c.moveTo(-w / 2 + 6, -h / 2 + i * h / 3); c.lineTo(w / 2 - 6, -h / 2 + i * h / 3); } else { c.moveTo(-w / 2 + i * w / 3, -h / 2 + 6); c.lineTo(-w / 2 + i * w / 3, h / 2 - 6); } c.stroke(); }
   } else if (P.kind === "glass"){
     c.strokeStyle = "rgba(255,255,255,.8)"; c.lineWidth = 3; c.beginPath(); c.moveTo(-w / 2 + 6, h / 2 - 8); c.lineTo(Math.min(w / 2 - 6, -w / 2 + 20), -h / 2 + 8); c.stroke();
+  } else if (P.kind === "wall"){
+    c.strokeStyle = "rgba(255,235,220,.55)"; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(-w / 2, 0); c.lineTo(w / 2, 0); c.moveTo(0, -h / 2); c.lineTo(0, 0); c.moveTo(-w / 4, 0); c.lineTo(-w / 4, h / 2); c.moveTo(w / 4, 0); c.lineTo(w / 4, h / 2); c.stroke();
   } else {
     c.fillStyle = "rgba(60,64,72,.35)";
     for (let i = 0; i < 5; i++){ c.beginPath(); c.arc(((i * 37) % w) - w / 2 + 6, ((i * 53) % h) - h / 2 + 6, 3, 0, 7); c.fill(); }
@@ -3297,6 +3309,7 @@ function slBuild(){
     b.plugin = { kind, hp: K.hp, max: K.hp, pts: K.pts, w, h, cap: kind === "bottle" ? caps[ci++ % 4] : null };
     M.Composite.add(E.world, b); SL.bodies.push(b);
   };
+  bigWall = () => { for (let k = 0; k < 4; k++) box("wall", 760, GY - k * 78, 64, 78); };
   LEVELS[SL.level % LEVELS.length](box, (x, bottom) => box("bottle", x, bottom, 26, 56));
   SL.armed = false;
   for (let i = 0; i < 90; i++) M.Engine.update(E, 1000 / 60);
@@ -3315,6 +3328,7 @@ function slCollide(ev){
 function slHit(t, other, rv){
   const P = t.plugin; if (!P || !P.kind || P.dead) return;
   let dmg = rv * (other === SL.proj ? 1.8 : 1);
+  if (P.kind === "wall") dmg *= other === SL.proj ? .25 : .5;
   if (P.kind === "bottle" && other === SL.proj && rv > .6) dmg = 99;
   if (dmg < 1.2) return;
   P.hp -= dmg;
@@ -3397,20 +3411,16 @@ function slDraw(){
   for (let x = 0; x <= SLW; x += 40) c.lineTo(x, GY - 70 - 40 * Math.sin(x / 260) - 25 * Math.sin(x / 97));
   c.lineTo(SLW, GY); c.closePath(); c.fill();
   c.fillStyle = "#6DBB4E"; c.fillRect(0, GY, SLW, 16); c.fillStyle = "#8B5A2B"; c.fillRect(0, GY + 16, SLW, SLH - GY - 16);
-  // skylt
-  c.fillStyle = "#7A4E22"; c.fillRect(104, GY - 120, 12, 120);
-  c.fillStyle = "#FFF4E2"; c.strokeStyle = "#7A4E22"; c.lineWidth = 4; c.fillRect(30, GY - 190, 160, 64); c.strokeRect(30, GY - 190, 160, 64);
-  c.fillStyle = "#E8213B"; c.font = "800 26px 'Bricolage Grotesque', system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("Grattis Hilda!", 110, GY - 158);
   // slangbella bak
   c.lineCap = "round"; c.strokeStyle = "#7A4E22"; c.lineWidth = 16;
   c.beginPath(); c.moveTo(SX, GY); c.lineTo(SX, SY + 60); c.lineTo(SX + 22, SY - 14); c.stroke();
   // block och flaskor
   for (const b of SL.bodies) if (!b.plugin.dead) (b.plugin.kind === "bottle" ? drawBottle : drawBlock)(c, b);
   // kön bakom slangbellan
-  if (SL.sub !== "done") for (let k = SL.shot + 1; k < 3; k++){
-    const x = SX - 110 - (k - SL.shot - 1) * 80, w = CHARS[k];
+  if (SL.sub !== "done") CHARS.filter(w => !(SL.used || []).includes(w) && w !== SL.who).forEach((w, k) => {
+    const x = SX - 110 - k * 80;
     if (w === "josef") drawJosef(c, x, GY - 12, 0, 1); else drawBaby(c, x, GY - 24, 24, 0, w);
-  }
+  });
   // skott / sikte
   let pos = null;
   if (SL.sub === "aim"){
@@ -3459,12 +3469,15 @@ function slDraw(){
   c.fillStyle = "#22123F"; c.textAlign = "right"; c.textBaseline = "alphabetic";
   c.font = "700 24px 'Bricolage Grotesque', system-ui, sans-serif"; c.fillText("Poäng", SLW - 50, 102);
   c.font = "800 46px 'Bricolage Grotesque', system-ui, sans-serif"; c.fillText(fmt(SL.score), SLW - 50, 149);
-  c.fillStyle = "rgba(255,255,255,.85)"; c.fillRect(30, 70, 250, 92);
+  c.fillStyle = "rgba(255,255,255,.85)"; c.fillRect(30, 66, 270, 120);
   for (let k = 0; k < 3; k++){
-    c.globalAlpha = k < SL.shot || SL.sub === "done" ? .25 : 1;
-    const x = 80 + k * 75;
-    if (CHARS[k] === "josef") drawJosef(c, x, 116, 0, .9); else drawBaby(c, x, 118, 24, 0, CHARS[k]);
-    if (k === SL.shot && SL.sub !== "done"){ c.globalAlpha = 1; c.strokeStyle = "#E8213B"; c.lineWidth = 4; c.beginPath(); c.arc(x, 116, 36, 0, 7); c.stroke(); }
+    const w = CHARS[k], used = (SL.used || []).includes(w);
+    c.globalAlpha = used || SL.sub === "done" ? .25 : 1;
+    const x = 85 + k * 80;
+    if (w === "josef") drawJosef(c, x, 110, 0, .9); else drawBaby(c, x, 112, 24, 0, w);
+    c.fillStyle = "#22123F"; c.font = "800 20px 'Bricolage Grotesque', system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "alphabetic";
+    c.fillText(CHAR_NAME[w], x, 172);
+    if (w === SL.who && SL.sub !== "done" && !used){ c.globalAlpha = 1; c.strokeStyle = "#E8213B"; c.lineWidth = 4; c.beginPath(); c.arc(x, 110, 36, 0, 7); c.stroke(); }
   }
   c.globalAlpha = 1;
   if (SL.sub === "done"){
@@ -3486,15 +3499,15 @@ function slStart(s){
 function slTurn(){
   while (SL.i < SL.order.length && !(H.players[SL.order[SL.i]] || {}).online) SL.i++;
   if (SL.i >= SL.order.length){ slEnd(); return; }
-  SL.turn = SL.order[SL.i]; SL.score = 0; SL.shot = 0;
+  SL.turn = SL.order[SL.i]; SL.score = 0; SL.shot = 0; SL.used = [];
   slBuild(); slShot();
 }
 function slShot(){
-  SL.who = CHARS[SL.shot]; SL.sub = "aim"; SL.aim = null; SL.armed = false; SL.exploded = false;
+  SL.who = CHARS.find(c => !SL.used.includes(c)); SL.sub = "aim"; SL.aim = null; SL.armed = false; SL.exploded = false;
   H.qid = ++QID; H.dur = 20000; H.deadline = Date.now() + H.dur;
   changed(); sched(slEndShot, H.dur);
 }
-function slFire(a, p){ SL.sub = "fly"; slLaunch(a, p); H.deadline = 0; changed(); sched(slCheck, 500); }
+function slFire(a, p){ SL.used.push(SL.who); SL.sub = "fly"; slLaunch(a, p); H.deadline = 0; changed(); sched(slCheck, 500); }
 function slCheck(){
   const el = performance.now() - SL.flyStart;
   const moving = SL.bodies.some(b => !b.plugin.dead && !b.isSleeping && b.speed > .3) || (SL.proj && SL.proj.speed > .3);
@@ -3502,6 +3515,7 @@ function slCheck(){
 }
 function slEndShot(){
   if (SL.proj){ Matter.Composite.remove(SL.engine.world, SL.proj); SL.proj = null; }
+  if (!SL.used.includes(SL.who)) SL.used.push(SL.who);
   SL.armed = false; SL.shot++;
   if (SL.shot < 3) slShot();
   else { SL.rs[SL.turn] = SL.score; SL.sub = "done"; H.deadline = 0; changed(); SL.i++; sched(slTurn, 3500); }
@@ -3529,6 +3543,10 @@ function onFire(msg){
   const d = slMsgOk(msg); if (!d || SL.sub !== "aim") return;
   const a = Number(d.a), p = Number(d.p); if (!isFinite(a) || !isFinite(p)) return;
   slFire(clampA(a), Math.min(1, Math.max(.05, p)));
+}
+function onPick(msg){
+  const d = slMsgOk(msg); if (!d || SL.sub !== "aim") return;
+  if (CHARS.includes(d.w) && !SL.used.includes(d.w) && d.w !== SL.who){ SL.who = d.w; SL.aim = null; changed(); }
 }
 function onBoom(msg){
   const d = slMsgOk(msg); if (!d || SL.sub !== "fly" || SL.who !== "josef") return;
@@ -3578,7 +3596,13 @@ function slingPad(st, S){
   cv.addEventListener("pointerup", release); cv.addEventListener("pointercancel", () => { s0 = null; pull = { x: 0, y: 0 }; draw(); });
   draw();
   return [
-    h("p", { class: "ph-text", style: "text-align:center; font-weight:800; font-size:1.3rem" }, `Din tur! Skott ${S.n + 1} av 3: ${CHAR_NAME[S.w]}`),
+    h("p", { class: "ph-text", style: "text-align:center; font-weight:800; font-size:1.3rem" }, `Din tur! Skott ${S.n + 1} av 3`),
+    h("div", { class: "picker", role: "group", "aria-label": "Välj vem du skjuter" }, CHARS.map(w => {
+      const used = (S.u || []).includes(w);
+      const ic = h("canvas", { width: 120, height: 120, "aria-hidden": "true" }), ix = ic.getContext("2d");
+      if (w === "josef") drawJosef(ix, 60, 62, -.5, 1.4); else drawBaby(ix, 60, 66, 40, 0, w);
+      return h("button", { class: "pick", "aria-pressed": String(w === S.w), disabled: used, onclick: () => { if (w !== S.w){ vibrate(20); emitP("pick", { qid, w }); } } }, ic, h("span", null, CHAR_NAME[w]), h("small", null, used ? "Skjuten" : w === S.w ? "Vald" : "Välj"));
+    })),
     miniBar(PL.deadline, st.dur),
     pad,
     h("p", { class: "ph-text muted", style: "text-align:center; font-size:.95rem" }, S.w === "josef"
@@ -3601,7 +3625,7 @@ function stateMsg(){
   if (H.ph === "est" || H.ph === "estr"){ st.q = H.q; st.u = H.unit; }
   if (H.ph === "estr") st.a = H.ans;
   if (["reveal", "rres", "estr", "tapr", "geor", "slingr"].includes(H.ph)) st.res = H.res;
-  if (H.ph === "sling") st.sl = { t: SL.turn, n: SL.shot, w: SL.who, s: SL.sub, q: SL.order.slice(SL.i, SL.i + 16), sc: SL.score };
+  if (H.ph === "sling") st.sl = { t: SL.turn, n: SL.shot, w: SL.who, u: SL.used || [], s: SL.sub, q: SL.order.slice(SL.i, SL.i + 16), sc: SL.score };
   if (JSON.stringify(st).length > 3800) delete st.res;
   if (JSON.stringify(st).length > 3800) delete st.q;
   return st;
@@ -3612,7 +3636,7 @@ function changed(){ pub(); tvRender(); }
 /* --- TV-rendering --- */
 function tvKey(){
   const pl = Object.values(H.players).map(p => p.pid + p.name + p.emoji + p.color + p.online).join("|");
-  return JSON.stringify([H.ph, H.qid, H.si, Object.keys(H.answers).length, H.lock, H.out.length, H.pz, H.waiting, tvConn, tvFatal, otherTV, pl, H.len, muted, H.endArm, H.ph === "sling" ? [SL.turn, SL.shot, SL.sub, SL.i] : 0, HOSTCODE, SHOWHOST, JSON.stringify(H.scores)]);
+  return JSON.stringify([H.ph, H.qid, H.si, Object.keys(H.answers).length, H.lock, H.out.length, H.pz, H.waiting, tvConn, tvFatal, otherTV, pl, H.len, muted, H.endArm, H.ph === "sling" ? [SL.turn, SL.shot, SL.sub, SL.i, SL.who] : 0, HOSTCODE, SHOWHOST, JSON.stringify(H.scores)]);
 }
 function tvRender(force){
   if (mode !== "tv") return;
@@ -3796,7 +3820,7 @@ async function startTV(){
   room.presence({ role: "tv" }).catch(() => {});
   room.onConnection(cn => { tvConn = cn; if (cn) pub(); tvRender(); }, e => { tvFatal = "Anslutningen till spelet bröts. Ladda om sidan för att försöka igen."; tvRender(true); });
   room.onPeers(onPeersTV);
-  room.on("answer", onAnswer); room.on("buzz", onBuzz); room.on("react", onReact); room.on("tap", onTap); room.on("ctl", onCtl); room.on("aim", onAim); room.on("fire", onFire); room.on("boom", onBoom);
+  room.on("answer", onAnswer); room.on("buzz", onBuzz); room.on("react", onReact); room.on("tap", onTap); room.on("ctl", onCtl); room.on("aim", onAim); room.on("fire", onFire); room.on("boom", onBoom); room.on("pick", onPick);
   setInterval(pub, 2500);
   document.addEventListener("keydown", e => {
     if (e.target && e.target.tagName === "INPUT") return;
